@@ -1,13 +1,20 @@
 {
-  "name": "user",
+  "name": "robotshop",
+
   "version": "1.0.0",
+
   "description": "user REST API",
+
   "main": "server.js",
+
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --runInBand"
   },
-  "author": "SteveW",
+
+  "author": "Shashank Palla",
+
   "license": "Apache-2.0",
+
   "dependencies": {
       "body-parser": "^1.18.1",
       "express": "^4.15.4",
@@ -15,7 +22,11 @@
       "redis": "^2.8.0",
       "pino": "^5.10.8",
       "express-pino-logger": "^4.0.0",
-      "pino-pretty": "^2.5.0",
-      "@instana/collector": "^1.132.2"
+      "pino-pretty": "^2.5.0"
+  },
+
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.1.1"
   }
 }
