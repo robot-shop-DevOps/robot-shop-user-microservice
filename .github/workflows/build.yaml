@@ -1,0 +1,17 @@
+name: Build and Deploy user microservice to Development
+
+on:
+  push:
+    branches:
+      - '**'   
+
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+    build:
+      runs-on: robot-shop-runner-azure-dev
+
+    deploy:
+      runs-on: robot-shop-runner-azure-dev
