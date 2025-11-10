@@ -2,7 +2,7 @@ const UserServiceApp = require('./app');
 
 const port = process.env.USER_SERVER_PORT || 8080;
 const service = new UserServiceApp({
-  mongoUrl: process.env.MONGO_URL,
+  mongoHost: process.env.MONGO_HOST,
   redisHost: process.env.REDIS_HOST,
 });
 

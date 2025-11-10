@@ -116,12 +116,10 @@ jobs:
           helm upgrade ${{ env.RELEASE }} ${{ env.chart_path }} \
           -f ${{ env.chart_path }}/values.yaml -f ${{ env.chart_path }}/values/values_dev.yaml \
           --namespace ${{ env.NAMESPACE }} --install --atomic \
-          --set statefulset.pod.containers[0].image="${{ env.REGISTRY_URL }}/robot-shop/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.IMAGE_TAG }}" \
-          --set job.create_users.pod.containers[0].image="${{ env.REGISTRY_URL }}/robot-shop/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.IMAGE_TAG }}" \
-          --set job.insert_data.pod.containers[0].image="${{ env.REGISTRY_URL }}/robot-shop/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.IMAGE_TAG }}"
+          --set deployment.pod.containers[0].image="${{ env.REGISTRY_URL }}/robot-shop/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.IMAGE_TAG }}"
 
 
       - name: Verify deployment
         run: | 
-          kubectl rollout status statefulset/user --namespace ${{ env.NAMESPACE }}
+          kubectl rollout status deployment/user --namespace ${{ env.NAMESPACE }}
           helm status ${{ env.RELEASE }} --namespace ${{ env.NAMESPACE }} --output table
