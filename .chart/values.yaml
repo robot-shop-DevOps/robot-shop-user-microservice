@@ -39,7 +39,7 @@ deployment:
 
       env:
       - name: USER_SERVER_PORT 
-        value: 8126
+        value: "8126"
 
       - name: MONGO_HOST  
         value: mongo-service-headless.mongo-database.svc.cluster.local
