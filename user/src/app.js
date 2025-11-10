@@ -9,10 +9,11 @@ const redis = require('redis');
 class UserServiceApp {
   constructor(options = {}) {
     // Optional mocks for testing
-    const { mongoUrl, redisHost, redisClient, mockCollections, skipMongoLoop = false } = options;
+    const { mongoHost, redisHost, redisClient, mockCollections, skipMongoLoop = false } = options;
 
     this.mongoConnected = false;
-    this.mongoUrl = mongoUrl;
+    this.redisConnected = false;
+    this.mongoUrl = 'mongodb://' + mongoHost + ':27017/users';
     this.redisHost = redisHost;
 
     // Mock collections for unit testing
@@ -33,16 +34,18 @@ class UserServiceApp {
 
     // Redis client
     if(redisClient) {
-        this.redisClient = redisClient
+        this.redisClient = redisClient;
+        this.redisConnected = true;
     }
     else {
         this.redisClient = redis.createClient({ host: this.redisHost });
         this.redisClient.on('error', (e) => this.logger.error('Redis ERROR', e));
         this.redisClient.on('ready', (r) => this.logger.info('Redis READY', r));
+        this.redisConnected = true;
     }
     
     // Mongo connection loop
-    if (!skipMongoLoop && !mockCollections) this.mongoLoop();
+    if (!skipMongoLoop && !mockCollections) this.startMongoLoop();
   }
 
   setupMiddleware() {
@@ -59,7 +62,14 @@ class UserServiceApp {
 
   setupRoutes() {
     this.app.get('/health', (req, res) => {
-      res.json({ app: 'OK', mongo: this.mongoConnected });
+      const status = {
+        app: 'OK',
+        mongo: this.mongoConnected,
+        redis: this.redisConnected
+      };
+      
+      const httpCode = this.mongoConnected ? 200 : 500;
+      res.status(httpCode).json(status);
     });
 
     this.app.get('/uniqueid', (req, res) => {
