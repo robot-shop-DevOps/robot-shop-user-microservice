@@ -38,6 +38,7 @@ jobs:
 
     build:
       runs-on: robot-shop-runner-azure-dev
+      needs: test
       outputs:
         IMAGE_TAG: ${{ steps.version.outputs.IMAGE_TAG }}
       steps:
