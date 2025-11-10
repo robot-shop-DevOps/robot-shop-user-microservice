@@ -6,6 +6,6 @@ COPY package.json /opt/server/
 
 RUN npm install
 
-COPY src/server.js /opt/server/
+COPY src/ ./src
 
-CMD ["node", "server.js"]
+CMD ["node", "src/server.js"]
