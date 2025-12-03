@@ -25,7 +25,12 @@ class UserServiceApp {
 
     // Logger setup
     this.logger = pino({ level: 'info', prettyPrint: false, useLevelLabels: true });
-    this.expLogger = expPino({ logger: this.logger });
+    this.expLogger = expPino({
+      logger: this.logger,
+      autoLogging: {
+        ignorePaths: ['/health']
+      }
+    });
 
     // Express app
     this.app = express();
