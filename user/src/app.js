@@ -1,30 +1,28 @@
-// src/app.js
-const express = require('express');
-const bodyParser = require('body-parser');
-const pino = require('pino');
-const expPino = require('express-pino-logger');
+const express                   = require('express');
+const bodyParser                = require('body-parser');
+const jwt                       = require('jsonwebtoken');
+const pino                      = require('pino');
+const expPino                   = require('express-pino-logger');
 const { MongoClient, ObjectID } = require('mongodb');
-const redis = require('redis');
+const redis                     = require('redis');
 
 class UserServiceApp {
   constructor(options = {}) {
-    // Optional mocks for testing
-    const { mongoHost, redisHost, redisClient, mockCollections, skipMongoLoop = false } = options;
+    const { mongoHost, redisHost, redisClient, mockCollections, skipMongoLoop = false, jwtsecret } = options;
 
     this.mongoConnected = false;
     this.redisConnected = false;
-    this.mongoUrl = 'mongodb://' + mongoHost + ':27017/users';
-    this.redisHost = redisHost;
+    this.mongoUrl       = 'mongodb://' + mongoHost + ':27017/users';
+    this.redisHost      = redisHost;
+    this.jwtsecret      = jwtsecret
 
-    // Mock collections for unit testing
     if (mockCollections) {
-      this.usersCollection = mockCollections.users;
+      this.usersCollection  = mockCollections.users;
       this.ordersCollection = mockCollections.orders;
-      this.mongoConnected = true;
+      this.mongoConnected   = true;
     }
 
-    // Logger setup
-    this.logger = pino({ level: 'info', prettyPrint: false, useLevelLabels: true });
+    this.logger    = pino({ level: 'info', prettyPrint: false, useLevelLabels: true });
     this.expLogger = expPino({
       logger: this.logger,
       autoLogging: {
@@ -32,14 +30,12 @@ class UserServiceApp {
       }
     });
 
-    // Express app
     this.app = express();
     this.setupMiddleware();
     this.setupRoutes();
 
-    // Redis client
     if(redisClient) {
-        this.redisClient = redisClient;
+        this.redisClient    = redisClient;
         this.redisConnected = true;
     }
     else {
@@ -48,8 +44,7 @@ class UserServiceApp {
         this.redisClient.on('ready', (r) => this.logger.info('Redis READY', r));
         this.redisConnected = true;
     }
-    
-    // Mongo connection loop
+
     if (!skipMongoLoop && !mockCollections) this.startMongoLoop();
   }
 
@@ -65,6 +60,30 @@ class UserServiceApp {
     });
   }
 
+  authMiddleware(req, res, next) {
+    const header = req.headers['authorization'];
+    if (!header) return res.status(401).send('Missing Authorization header');
+
+    const token = header.split(' ')[1];
+    if (!token) return res.status(401).send('Missing token');
+
+    try {
+      const decoded = jwt.verify(token, this.jwtsecret);
+      req.user      = decoded;   
+      next();
+    } catch (e) {
+      return res.status(403).send('Invalid or expired token');
+    }
+  }
+
+  generateToken(user) {
+    return jwt.sign(
+      { name: user.name, email: user.email },
+      this.jwtsecret,
+      { expiresIn: '1h' }
+    );
+  }
+
   setupRoutes() {
     this.app.get('/health', (req, res) => {
       const status = {
@@ -76,18 +95,8 @@ class UserServiceApp {
       const httpCode = this.mongoConnected ? 200 : 500;
       res.status(httpCode).json(status);
     });
-
-    this.app.get('/uniqueid', (req, res) => {
-      this.redisClient.incr('anonymous-counter', (err, r) => {
-        if (!err) res.json({ uuid: 'anonymous-' + r });
-        else {
-          req.log.error('ERROR', err);
-          res.status(500).send(err);
-        }
-      });
-    });  
     
-    this.app.get('/check/:id', async (req, res) => {
+    this.app.get('/check/:id', this.authMiddleware.bind(this), async (req, res) => {
       if (!this.mongoConnected) return res.status(500).send('database not available');
       try {
         const user = await this.usersCollection.findOne({ name: req.params.id });
@@ -96,7 +105,7 @@ class UserServiceApp {
       } catch (e) { req.log.error(e); res.status(500).send(e); }
     });
 
-    this.app.get('/users', async (req, res) => {
+    this.app.get('/users', this.authMiddleware.bind(this), async (req, res) => {
       if (!this.mongoConnected) return res.status(500).send('database not available');
       try {
         const users = await this.usersCollection.find().toArray();
@@ -127,11 +136,17 @@ class UserServiceApp {
         const user = await this.usersCollection.findOne({ name });
         if (!user) return res.status(404).send('name not found');
         if (user.password !== password) return res.status(404).send('incorrect password');
-        res.json(user);
+
+        const token = this.generateToken(user);
+
+        res.json({ 
+          message: 'Login successful',
+          token 
+        });
       } catch (e) { req.log.error(e); res.status(500).send(e); }
     });
 
-    this.app.post('/order/:id', async (req, res) => {
+    this.app.post('/order/:id', this.authMiddleware.bind(this), async (req, res) => {
       if (!this.mongoConnected) return res.status(500).send('database not available');
 
       try {
@@ -149,7 +164,7 @@ class UserServiceApp {
       } catch (e) { req.log.error(e); res.status(500).send(e); }
     });
 
-    this.app.get('/history/:id', async (req, res) => {
+    this.app.get('/history/:id', this.authMiddleware.bind(this), async (req, res) => {
       if (!this.mongoConnected) return res.status(500).send('database not available');
 
       try {
