@@ -1,0 +1,81 @@
+labels:
+  app: User
+  project: Robot-Shop
+  technology: NodeJs
+  environment: default 
+
+deployment:
+  name: user
+
+  replicas: 1
+
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+
+  pod:
+    nodeSelector:
+      project: Robot-Shop
+
+    containers:  
+    - name: user
+
+      image: ${IMAGE}  # <-- placeholder
+
+      imagePullPolicy: Always
+
+      ports:
+      - containerPort: 8126
+
+      resources:
+        requests:
+          cpu: "50m"
+          memory: "128Mi"
+
+        limits:
+          cpu: "200m"
+          memory: "512Mi"
+
+      env:
+      - name: USER_SERVER_PORT 
+        value: "8126"
+
+      - name: MONGO_HOST  
+        value: mongo-service-headless.mongo-database.svc.cluster.local
+
+      - name: REDIS_HOST
+        value: redis-service-headless.redis-database.svc.cluster.local
+
+      - name: JWT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: jwt
+            key: JWT_SECRET
+
+      readinessProbe:
+        httpGet:
+          path: /health
+          port: 8126
+        initialDelaySeconds: 5
+        periodSeconds: 10
+        failureThreshold: 3
+        
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: 8126
+        initialDelaySeconds: 15
+        periodSeconds: 20
+        failureThreshold: 3
+
+
+service:
+  name: user
+
+  type: ClusterIP
+
+  ports:
+  - name: user
+    port: 8126
+    targetPort: 8126
